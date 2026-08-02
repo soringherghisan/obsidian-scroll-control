@@ -1,4 +1,4 @@
-import { App, Editor, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, Editor, Plugin, PluginSettingTab, Setting, SettingDefinitionItem } from "obsidian";
 import { EditorView, keymap } from "@codemirror/view";
 
 interface ScrollControlSettings {
@@ -8,6 +8,13 @@ interface ScrollControlSettings {
 const DEFAULT_SETTINGS: ScrollControlSettings = {
 	useBuiltInKeymap: true,
 };
+
+// Shared by the declarative definitions and the pre-1.13 display() fallback so
+// the two renderings cannot drift apart.
+const KEYMAP_SETTING_NAME = "Use built-in Ctrl+Up/Down";
+const KEYMAP_SETTING_DESC =
+	"Bind Ctrl+Up and Ctrl+Down in the editor, with repeat while the key is held. " +
+	"Turn this off to use only the hotkeys you assign under Settings > Hotkeys.";
 
 function scrollByLine(view: EditorView, direction: number): void {
 	view.scrollDOM.scrollBy({ top: view.defaultLineHeight * direction });
@@ -80,16 +87,33 @@ class ScrollControlSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	display(): void {
+	// Obsidian 1.13.0 and later render the tab from these definitions and index
+	// them for settings search. The inherited getControlValue/setControlValue
+	// read and persist this.plugin.settings under the given key.
+	override getSettingDefinitions(): SettingDefinitionItem[] {
+		return [
+			{
+				name: KEYMAP_SETTING_NAME,
+				desc: KEYMAP_SETTING_DESC,
+				control: {
+					type: "toggle",
+					key: "useBuiltInKeymap",
+					defaultValue: DEFAULT_SETTINGS.useBuiltInKeymap,
+				},
+			},
+		];
+	}
+
+	// Fallback for Obsidian older than 1.13.0, which has no declarative API.
+	// Not called from 1.13.0 onwards, since getSettingDefinitions() returns a
+	// non-empty array.
+	override display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName("Use built-in Ctrl+Up/Down")
-			.setDesc(
-				"Bind Ctrl+Up and Ctrl+Down in the editor, with repeat while the key is held. " +
-				"Turn this off to use only the hotkeys you assign under Settings > Hotkeys."
-			)
+			.setName(KEYMAP_SETTING_NAME)
+			.setDesc(KEYMAP_SETTING_DESC)
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.useBuiltInKeymap)
