@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-scroll-control",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Scroll one line at a time with Ctrl+Up/Down, just like in VSCode and other code editors.",
 	"main": "main.js",
 	"type": "module",

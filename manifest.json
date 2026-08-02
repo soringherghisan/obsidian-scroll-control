@@ -1,7 +1,7 @@
 {
 	"id": "scroll-control",
 	"name": "Scroll Control",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "0.15.0",
 	"description": "Scroll one line at a time with Ctrl+Up/Down, just like in VSCode and other code editors.",
 	"author": "Sorin Gherghisan",
