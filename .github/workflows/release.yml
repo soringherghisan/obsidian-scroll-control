@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Obsidian requires the release tag to match manifest.json exactly, and
+      # rejects the release otherwise. Fail early rather than publish a bad tag.
+      - name: Verify tag matches manifest version
+        run: |
+          manifest_version="$(node -p "require('./manifest.json').version")"
+          if [ "$manifest_version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not match manifest.json version '$manifest_version'"
+            exit 1
+          fi
+          if ! node -e "process.exit(require('./versions.json')['$GITHUB_REF_NAME'] ? 0 : 1)"; then
+            echo "::error::versions.json has no entry for '$GITHUB_REF_NAME'"
+            exit 1
+          fi
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      # Proves the release assets were built from this repository at this commit.
+      # Verify with: gh attestation verify main.js --repo <owner>/<repo>
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            main.js manifest.json styles.css \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
